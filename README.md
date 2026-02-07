@@ -40,10 +40,10 @@ This model is optimized to:
 
 Trade only during high liquidity windows.
 
-| Session | UTC | IST |
-|--------|------|------|
-| London | 07:00 – 11:00 | 12:30 – 16:30 |
-| New York | 13:00 – 16:00 | 18:30 – 21:30 |
+| Session | IST |
+|--------|------|
+| London | 12:30 – 16:30 |
+| New York | 18:30 – 21:30 |
 
 ### Avoid
 
