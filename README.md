@@ -24,17 +24,17 @@ Deployment: Manual / Hybrid / Fully Automated
 
 ⚙️ Market Environment (2026 Context)
 
-Modern forex microstructure characteristics:
+>Modern forex microstructure characteristics:
 
-High algorithmic participation
+>High algorithmic participation
 
-Frequent breakout fakeouts
+>Frequent breakout fakeouts
 
-Liquidity sweeps before continuation
+>Liquidity sweeps before continuation
 
-Spread volatility during news
+>Spread volatility during news
 
-Cleaner trend legs due to execution algos
+>Cleaner trend legs due to execution algos
 
 
 This model is optimized to:
