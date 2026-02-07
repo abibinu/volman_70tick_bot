@@ -53,10 +53,10 @@ Filter low‑liquidity environments
 
 Trade only during high liquidity windows.
 
-Session	UTC	IST
+Session	IST
 
-London	07:00 – 11:00	12:30 – 16:30
-New York	13:00 – 16:00	18:30 – 21:30
+London	12:30 – 16:30
+New York	18:30 – 21:30
 
 
 Avoid
