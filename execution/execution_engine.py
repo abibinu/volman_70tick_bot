@@ -23,7 +23,8 @@ class ExecutionEngine:
                 "tp": tp,
                 "be_moved": False,
                 "candles_held": 0,
-                "result_registered": False
+                "result_registered": False,
+                "tp_touched": False  # ✅ FIXED: Added flag to track if TP was reached
             }
             logging.info(f"Trade opened successfully. Ticket: {ticket}")
         else:
@@ -38,20 +39,38 @@ class ExecutionEngine:
     def manage_trades(self, symbol, risk_engine):
         tick = self.mt5.get_tick(symbol)
         if not tick:
+            logging.warning("Failed to get tick data for trade management")
             return
 
-        # Check if any trades were closed by SL/TP
+        # ✅ FIXED: First check if positions were closed and determine win/loss
         for ticket, trade in list(self.active_trades.items()):
             if not self.mt5.position_exists(ticket):
-                logging.info(f"Trade {ticket} closed by SL/TP or manually.")
                 if not trade["result_registered"]:
-                    risk_engine.register_trade_result(win=False)
+                    # ✅ FIXED: Determine win based on whether TP was touched
+                    win = trade["tp_touched"]
+                    risk_engine.register_trade_result(win=win)
                     trade["result_registered"] = True
+                    
+                    result_text = "WIN (TP Hit)" if win else "LOSS (SL Hit or Time Stop)"
+                    logging.info(f"Trade {ticket} closed: {result_text}")
+                
                 del self.active_trades[ticket]
                 continue
 
+        # ✅ FIXED: Now manage active positions
         for ticket, trade in list(self.active_trades.items()):
             current_price = tick["bid"] if trade["direction"] == "UP" else tick["ask"]
+
+            # ✅ FIXED: Track if TP was reached (even momentarily before close)
+            if not trade["tp_touched"]:
+                if trade["direction"] == "UP":
+                    if current_price >= trade["tp"]:
+                        trade["tp_touched"] = True
+                        logging.info(f"Trade {ticket} reached TP target")
+                else:
+                    if current_price <= trade["tp"]:
+                        trade["tp_touched"] = True
+                        logging.info(f"Trade {ticket} reached TP target")
 
             # 1. Check Break-Even
             if not trade["be_moved"]:
@@ -65,10 +84,22 @@ class ExecutionEngine:
                 logging.info(f"Time stop reached for trade {ticket}. Closing position.")
                 if self.mt5.close_position(ticket):
                     if not trade["result_registered"]:
-                        risk_engine.register_trade_result(win=False)
+                        # ✅ FIXED: Use tp_touched flag for win determination
+                        win = trade["tp_touched"]
+                        risk_engine.register_trade_result(win=win)
                         trade["result_registered"] = True
                     del self.active_trades[ticket]
                     continue
 
     def cleanup_closed_trades(self, risk_engine):
-        pass
+        """
+        ✅ FIXED: This method was unused. Now it properly cleans up any 
+        positions that were closed outside the normal flow.
+        """
+        for ticket, trade in list(self.active_trades.items()):
+            if not self.mt5.position_exists(ticket):
+                if not trade["result_registered"]:
+                    win = trade["tp_touched"]
+                    risk_engine.register_trade_result(win=win)
+                    logging.info(f"Cleanup: Trade {ticket} result = {'WIN' if win else 'LOSS'}")
+                del self.active_trades[ticket]

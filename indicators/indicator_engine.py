@@ -6,9 +6,16 @@ class IndicatorEngine:
 
         self.candles = []
         self.ema_values = []
+        
+        # ✅ FIXED: Added max history to prevent memory leak
+        self.max_history = 100
 
     def update(self, candle: dict):
         self.candles.append(candle)
+        
+        # ✅ FIXED: Added memory management - keep only recent candles
+        if len(self.candles) > self.max_history:
+            self.candles.pop(0)
 
         close = candle["close"]
 
@@ -20,6 +27,10 @@ class IndicatorEngine:
             ema = alpha * close + (1 - alpha) * self.ema_values[-1]
 
         self.ema_values.append(ema)
+        
+        # ✅ FIXED: Added memory management for EMA values
+        if len(self.ema_values) > self.max_history:
+            self.ema_values.pop(0)
 
         # EMA slope
         ema_slope = None

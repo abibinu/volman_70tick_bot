@@ -1,3 +1,4 @@
+import logging 
 from utils.pip_utils import price_to_pips
 
 class PullbackQualifier:

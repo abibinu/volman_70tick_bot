@@ -68,13 +68,28 @@ class TestStrategyModules(unittest.TestCase):
     def test_risk_calculations(self):
         self.risk.register_new_trade()
         self.assertEqual(self.risk.trades_this_session, 1)
-        # Entry 1.1010, PB Low 1.1005 (risk 5 pips)
-        sl, tp = self.risk.calculate_sl_tp("UP", 1.1010, 1.1005)
-        # SL should be 1.1005 - 0.5 pip = 1.10045
-        self.assertAlmostEqual(sl, 1.1010 - 0.00055) # Actually PB extreme - 0.5 pip
-        # Check RR 1.2
-        risk = 1.1010 - sl
-        self.assertAlmostEqual(tp, 1.1010 + risk * 1.2)
+        
+        # ✅ FIXED: Corrected SL/TP calculation test
+        # Entry: 1.1010, PB extreme (low): 1.1005
+        entry = 1.1010
+        pb_extreme = 1.1005
+        
+        sl, tp = self.risk.calculate_sl_tp("UP", entry, pb_extreme)
+        
+        # SL should be: pb_extreme - 0.5 pips = 1.1005 - 0.00005 = 1.10045
+        expected_sl = pb_extreme - pips_to_price(0.5)
+        self.assertAlmostEqual(sl, expected_sl, places=5)
+        
+        # TP should be: entry + (risk * 1.2)
+        # Risk = entry - sl = 1.1010 - 1.10045 = 0.00055
+        # TP = 1.1010 + (0.00055 * 1.2) = 1.1010 + 0.00066 = 1.10166
+        risk = entry - sl
+        expected_tp = entry + (risk * 1.2)
+        self.assertAlmostEqual(tp, expected_tp, places=5)
+        
+        # Verify RR is 1.2
+        actual_rr = (tp - entry) / (entry - sl)
+        self.assertAlmostEqual(actual_rr, 1.2, places=2)
 
 if __name__ == "__main__":
     unittest.main()

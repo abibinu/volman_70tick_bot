@@ -34,6 +34,7 @@ def main():
     exec_engine = ExecutionEngine(mt5)
 
     logging.info("Volman 70-Tick Scalper Bot Started")
+    logging.info(f"Symbol: {symbol} | Tick per candle: 70")
 
     try:
         while True:
@@ -48,20 +49,24 @@ def main():
             # 2. Fetch Tick
             tick = mt5.get_tick(symbol)
             if not tick:
+                logging.warning("Failed to fetch tick. Retrying...")
                 time.sleep(0.1)
                 continue
 
+            # ✅ FIXED: Changed from 1.0 to 0.8 to avoid dead zone
+            # Previously: spread > 1.0 blocked loop, but trades only executed if spread <= 0.8
+            # Now: spread > 0.8 blocks everything (consistent with execution threshold)
             # 3. Spread Filter
             spread_pips = price_to_pips(tick["spread"], symbol)
-            if spread_pips > 1.0:
-                # Block trades if spread > 1.0
+            if spread_pips > 0.8:
+                # Skip this tick if spread too high
                 time.sleep(0.1)
                 continue
 
             # 4. Tick Candle Generation
             candle = tick_engine.process_tick(tick)
             if candle:
-                logging.info(f"New 70-tick candle: {candle['index']} | Close: {candle['close']}")
+                logging.info(f"New 70-tick candle: {candle['index']} | Close: {candle['close']:.5f}")
 
                 # 5. Indicators Update
                 indicators = ind_engine.update(candle)
@@ -71,12 +76,11 @@ def main():
 
                 if signal:
                     if risk_engine.can_trade():
-                        if spread_pips <= 0.8:  # Allowed to trade if spread <= 0.8
-                            ticket = exec_engine.execute_signal(signal, symbol)
-                            if ticket > 0:
-                                risk_engine.register_new_trade()
-                        else:
-                            logging.info(f"Signal ignored due to spread: {spread_pips:.1f}")
+                        # ✅ FIXED: Removed redundant spread check (already filtered above)
+                        # Previously checked spread <= 0.8 here, but we already blocked if > 0.8
+                        ticket = exec_engine.execute_signal(signal, symbol)
+                        if ticket > 0:
+                            risk_engine.register_new_trade()
                     else:
                         logging.info("Signal ignored due to risk limits.")
 
@@ -93,6 +97,8 @@ def main():
     except Exception as e:
         logging.error(f"Critical error: {e}", exc_info=True)
     finally:
+        # ✅ FIXED: Added cleanup call before shutdown
+        exec_engine.cleanup_closed_trades(risk_engine)
         mt5.shutdown()
         logging.info("MT5 connection closed. Goodbye.")
 
