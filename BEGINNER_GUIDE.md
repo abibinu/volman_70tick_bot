@@ -18,6 +18,15 @@ Before risking real money, you should always test the bot. We have built a "flig
 
 ### Steps to Run a Test:
 1.  **Open your terminal** (Command Prompt or PowerShell).
+2.  **Type this command** and press Enter (this uses fake data for a quick test):
+    ```bash
+    python run_backtest.py --days 2 --source synthetic
+    ```
+3.  **To test with REAL history** (requires MetaTrader 5 on Windows):
+    ```bash
+    python run_backtest.py --days 7 --source mt5
+    ```
+4.  **Read the Results**: The bot will simulate the trading and print a report like this:
 2.  **Type this command** and press Enter:
     ```bash
     python run_backtest.py
