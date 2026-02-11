@@ -14,8 +14,10 @@ class TrendAnalyzer:
             self.highs.pop(0)
             self.lows.pop(0)
 
-    def qualify_uptrend(self, candle, indicators):
+    def update(self, candle):
         self.update_structure(candle)
+
+    def qualify_uptrend(self, candle, indicators):
         ema = indicators.get("ema20")
         slope = indicators.get("ema20_slope")
 
@@ -44,7 +46,6 @@ class TrendAnalyzer:
         return True
 
     def qualify_downtrend(self, candle, indicators):
-        self.update_structure(candle)
         ema = indicators.get("ema20")
         slope = indicators.get("ema20_slope")
 

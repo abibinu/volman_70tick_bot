@@ -5,9 +5,11 @@ from strategy.pullback import PullbackQualifier
 from strategy.structure import StructureMonitor
 from strategy.entry import EntryTrigger
 from utils.pip_utils import price_to_pips
+from utils.news_filter import NewsFilter
 
 class StrategyEngine:
     def __init__(self, risk_engine):
+        self.news_filter = NewsFilter()
         self.trend_analyzer = TrendAnalyzer()
         self.impulse_detector = ImpulseDetector()
         self.pullback_qualifier = PullbackQualifier()
@@ -23,6 +25,9 @@ class StrategyEngine:
         self.candles.append(candle)
         if len(self.candles) > 100:
             self.candles.pop(0)
+
+        # Update trend analyzer structure
+        self.trend_analyzer.update(candle)
 
         # 1. Volatility Filter
         avg_range = indicators.get("avg_range")
@@ -45,6 +50,10 @@ class StrategyEngine:
         return None
 
     def _handle_searching(self, candle, indicators):
+        # 0. News Filter
+        if self.news_filter.is_news_active(candle.get("timestamp_open")):
+            return None
+
         # Qualify Trend
         uptrend = self.trend_analyzer.qualify_uptrend(candle, indicators)
         downtrend = self.trend_analyzer.qualify_downtrend(candle, indicators)
@@ -84,10 +93,11 @@ class StrategyEngine:
             # Prepare trigger info
             if setup["direction"] == "UP":
                 trigger_price = max(c["high"] for c in setup["pb_candles"])
-                invalidation_price = min(c["low"] for c in setup["pb_candles"])
+                # Use a small buffer for invalidation to avoid premature reset
+                invalidation_price = min(c["low"] for c in setup["pb_candles"]) - 0.00005
             else:
                 trigger_price = min(c["low"] for c in setup["pb_candles"])
-                invalidation_price = max(c["high"] for c in setup["pb_candles"])
+                invalidation_price = max(c["high"] for c in setup["pb_candles"]) + 0.00005
 
             setup["trigger_price"] = trigger_price
             setup["invalidation_price"] = invalidation_price
@@ -111,23 +121,25 @@ class StrategyEngine:
             self.reset_state()
             return None
 
-        # Check for trigger
-        entry_price = self.entry_trigger.check_trigger(setup, candle)
+        return self._check_entry_trigger(candle, setup)
+
+    def process_tick(self, tick, indicators):
+        if self.state != "WAITING_TRIGGER" or not self.current_setup:
+            return None
+
+        setup = self.current_setup
+        price = (tick["bid"] + tick["ask"]) / 2
+        tick_candle = {"high": price, "low": price, "close": price}
+        return self._check_entry_trigger(tick_candle, setup)
+
+    def _check_entry_trigger(self, candle_or_tick, setup):
+        entry_price = self.entry_trigger.check_trigger(setup, candle_or_tick)
         if entry_price:
             logging.info(f"Entry triggered at {entry_price}")
-
-            # Calculate SL/TP
             sl, tp = self.risk_engine.calculate_sl_tp(setup["direction"], entry_price, setup["pb_extreme"])
-
-            signal = {
-                "direction": setup["direction"],
-                "entry_price": entry_price,
-                "sl": sl,
-                "tp": tp
-            }
+            signal = {"direction": setup["direction"], "entry_price": entry_price, "sl": sl, "tp": tp}
             self.reset_state()
             return signal
-
         return None
 
     def reset_state(self):
