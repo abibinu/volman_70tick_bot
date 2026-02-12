@@ -7,14 +7,37 @@ class MT5Adapter:
     def __init__(self):
         self.connected = False
 
-    def connect(self) -> bool:
-        if not mt5.initialize():
+    def connect(self, login=None, password=None, server=None) -> bool:
+        if login and password and server:
+            init_res = mt5.initialize(login=login, password=password, server=server)
+        else:
+            init_res = mt5.initialize()
+
+        if not init_res:
             logging.error(f"MT5 initialize failed: {mt5.last_error()}")
             return False
 
         self.connected = True
         logging.info("MT5 connected successfully")
         return True
+
+    def get_account_info(self):
+        """Returns account information including margin and balance."""
+        account_info = mt5.account_info()
+        if account_info is None:
+            logging.error(f"Failed to get account info: {mt5.last_error()}")
+            return None
+
+        return {
+            "login": account_info.login,
+            "balance": account_info.balance,
+            "equity": account_info.equity,
+            "margin": account_info.margin,
+            "margin_free": account_info.margin_free,
+            "margin_level": account_info.margin_level,
+            "leverage": account_info.leverage,
+            "currency": account_info.currency
+        }
 
     def shutdown(self) -> None:
         mt5.shutdown()
@@ -70,7 +93,7 @@ class MT5Adapter:
 
         result = mt5.order_send(request)
         if result.retcode != mt5.TRADE_RETCODE_DONE:
-            logging.error(f"Order failed: {result.retcode}")
+            logging.error(f"Order failed: {result.retcode} - {result.comment}")
             return -1
 
         return result.order
