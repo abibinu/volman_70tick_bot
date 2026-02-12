@@ -104,11 +104,10 @@ class StrategyEngine:
             # Prepare trigger info
             if setup["direction"] == "BUY":
                 trigger_price = max(c["high"] for c in setup["pb_candles"])
-                # Use a small buffer for invalidation to avoid premature reset
-                invalidation_price = min(c["low"] for c in setup["pb_candles"]) - 0.00005
+                invalidation_price = min(c["low"] for c in setup["pb_candles"]) 
             else:
                 trigger_price = min(c["low"] for c in setup["pb_candles"])
-                invalidation_price = max(c["high"] for c in setup["pb_candles"]) + 0.00005
+                invalidation_price = max(c["high"] for c in setup["pb_candles"])
 
             setup["trigger_price"] = trigger_price
             setup["invalidation_price"] = invalidation_price
